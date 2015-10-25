@@ -6,6 +6,7 @@ output:
   pdf_document: default
 ---
 by José Carrasquero
+
 Johns Hopkins University Data Science Specialization
 
 ##Introduction
