@@ -1,0 +1,104 @@
+---
+title: 'Practical Machine Learning: Course Project'
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+by José Carrasquero
+Johns Hopkins University Data Science Specialization
+
+##Introduction
+In this Course project we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants performing one arm dumbell curls in five different ways (correct form, and four different variations with incorrect form):
+
+* A: Correct form (Exactly according to the specification)
+* B: Throwing the elbows to the front
+* C: Lifting the dumbbell only halfway
+* D: Lowering the dumbbell only halfway
+* E: Throwing the hips to the front
+
+and train machine learning algorithms able to predict which variation of the exerise is being performed.
+
+##R Packages used:
+We will use the following packages:
+
+```{r, warning=FALSE, message=FALSE}
+library(caret)
+library(rpart)
+library(randomForest)
+```
+
+## The Data we use:
+We proceed to download the training and testing data sets:
+```{r cache = TRUE}
+if(!file.exists("pml-training.csv")){
+        download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", 
+                      "/Users/skom/Desktop/coursera/MACHINE_LEARNING_WRITEUP/pml-training.csv",
+                      method="curl")
+}
+
+if(!file.exists("pml-testing.csv")){
+        download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", 
+                      "/Users/skom/Desktop/coursera/MACHINE_LEARNING_WRITEUP/pml-testing.csv",
+                      method="curl")
+}
+```
+
+And we proceed to read the csv files into r, in this case we will need to specify that there are 3 different types of NA strings in the files:
+```{r cache = TRUE}
+df  <- read.csv("pml-training.csv", na.strings = c(NA,"","#DIV/0!"))
+df2 <- read.csv("pml-testing.csv" , na.strings = c(NA,"","#DIV/0!"))
+```
+
+Then I proceed to eliminate the first seven columns from the training dataset as they contain irrelevant information for the prediction exercise and all columns that have more than 90% of NA values (than we eliminate those same columns from the testing set). Next, the training data set is split into a smaller training and testing data set (60/40 split):
+```{r cache = TRUE}
+df[1:7]<- list(NULL)
+df <- df[,colSums(is.na(df))<nrow(df)*0.9]
+set.seed(333)
+inTrain <- createDataPartition(y=df$classe,
+                               p=0.6, list=FALSE)
+training <- df[inTrain,]
+testing <- df[-inTrain,]
+
+df2 <- read.csv("pml-testing.csv", na.strings = c(NA,"","#DIV/0!"))
+df2<-df2[,names(df2) %in% names(df)]
+df2$classe <- 1
+```
+
+## Regression tree model
+Using the rpart function (from the package of the same name), we proceed to create a regression tree classification model. We see how the prediction model works out against the smaller training and testing datasets (I will only show results for testing sets):
+```{r cache = TRUE}
+set.seed(333)
+model1 <- rpart(classe ~. , data=training)
+
+pred_test1 <-predict(model1,testing, type="class")
+testing$predRight <- pred_test1==testing$classe
+#table(pred_test1,testing$classe)
+confusionMatrix(pred_test1,testing$classe)
+
+pred1 <- predict(model1,df2, type="class")
+pred1
+```
+
+The regression tree model has an overall accuracy of 73.88% on the testing set (which was subset from the training dataset). Looking at the different sensitivities and specificities it is able to predict certain forms of performing the exercise  better than others.
+
+## Random Forest Model
+Than using the randomForest function (from the package of the same name), we proceed to create and random forest classification model:
+```{r cache = TRUE}
+set.seed(333)
+model2 <- randomForest(classe ~. , data=training)
+model2
+
+pred_test2 <-predict(model2,testing); testing$predRight <- pred_test2==testing$classe
+#table(pred_test2,testing$classe)
+confusionMatrix(pred_test2,testing$classe)
+
+
+pred2 <- predict(model2,df2)
+pred2
+```
+
+This model has a 99.2% accuracy on the training subset and 99.39% accuracy on the testing subset.
+
+## Conclusion
+For this dataset the Random Forrest model predicts much better in which form the dumbell curl exercise is being performed.
